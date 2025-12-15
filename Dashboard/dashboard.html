@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <title>Business Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif']
+          },
+          colors: {
+            primary: {
+              DEFAULT: '#4f46e5',
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca'
+            },
+            accent: {
+              500: '#ec4899'
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.8) transparent;
+    }
+
+    *::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    *::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    *::-webkit-scrollbar-thumb {
+      background-color: rgba(148, 163, 184, 0.9);
+      border-radius: 9999px;
+    }
+
+    body {
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    }
+
+    .glass {
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .sidebar-enter {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+
+    .sidebar-enter-active {
+      transform: translateX(0);
+      opacity: 1;
+      transition: all 200ms ease-out;
+    }
+
+    .sidebar-leave {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    .sidebar-leave-active {
+      transform: translateX(-100%);
+      opacity: 0;
+      transition: all 150ms ease-in;
+    }
+
+    .card-hover {
+      transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease,
+        border-color 150ms ease;
+    }
+
+    .card-hover:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.25);
+    }
+
+    .metric-badge {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-badge::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 0 0, rgba(96, 165, 250, 0.14), transparent 55%);
+      opacity: 0;
+      transition: opacity 200ms ease;
+    }
+
+    .metric-badge:hover::before {
+      opacity: 1;
+    }
+
+    .pulse-dot {
+      position: relative;
+    }
+
+    .pulse-dot::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      border: 2px solid rgba(34, 197, 94, 0.6);
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+        opacity: 0.9;
+      }
+      70% {
+        transform: scale(2.4);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(2.4);
+        opacity: 0;
+      }
+    }
+
+    .fade-in {
+      animation: fade-in 320ms ease-out both;
+    }
+
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
+  <div class="relative min-h-screen overflow-hidden">
+    <!-- Gradient background -->
+    <div class="pointer-events-none fixed inset-0 -z-10">
+      <div class="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"></div>
+      <div class="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-primary-600/30 blur-3xl"></div>
+      <div class="absolute bottom-[-6rem] right-[-6rem] h-96 w-96 rounded-full bg-accent-500/30 blur-3xl"></div>
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,.18),_transparent_60%)]"></div>
+    </div>
+
+    <!-- Mobile overlay -->
+    <div
+      id="mobileOverlay"
+      class="fixed inset-0 z-30 hidden bg-slate-950/40 backdrop-blur-sm transition-opacity lg:hidden"
+    ></div>
+
+    <!-- Sidebar -->
+    <aside
+      id="sidebar"
+      class="glass fixed inset-y-3 left-3 z-40 flex w-72 flex-col rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-2xl shadow-slate-950/60 transition-transform duration-200 ease-out lg:inset-y-4 lg:left-4 lg:w-72"
+    >
+      <!-- Logo -->
+      <div class="mb-6 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div
+            class="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 shadow-lg shadow-primary-900/60"
+          >
+            <span class="text-xl font-semibold leading-none text-white">B</span>
+          </div>
+          <div>
+            <p class="text-sm font-semibold tracking-tight text-white">BusinessBoard</p>
+            <p class="text-xs text-slate-400">Executive Analytics</p>
+          </div>
+        </div>
+        <button
+          id="sidebarClose"
+          class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-slate-400 hover:border-white/20 hover:text-slate-100 lg:hidden"
+          aria-label="Close navigation"
+        >
+          <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none">
+            <path
+              d="M6 6L14 14M6 14L14 6"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="flex-1 space-y-6 overflow-y-auto pr-1">
+        <div>
+          <p class="mb-2 px-2 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+            Overview
+          </p>
+          <div class="space-y-1">
+            <button
+              class="card-hover flex w-full items-center gap-3 rounded-2xl bg-slate-800/80 px-3 py-2.5 text-sm font-medium text-white shadow-md shadow-slate-900/50 ring-1 ring-inset ring-white/10 transition hover:bg-slate-800"
+            >
+              <span
+                class="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500/90 to-primary-600/90 text-white shadow-inner shadow-slate-900/40"
+              >
+                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none">
+                  <path
+                    d="M3.5 11L8.25 5.75C9.2165 4.7165 10.7835 4.7165 11.75 5.75L16.5 11M5 9.5V14.25C5 14.6642 5.33579 15 5.75 15H8.5V12C8.5 11.1716 9.17157 10.5 10 10.5C10.8284 10.5 11.5 11.1716 11.5 12V15H14.25C14.6642 15 15 14.6642 15 14.25V9.5M4.5 15.5H15.5"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </span>
+              <div class="flex-1 text-left">
+                <span>Executive Dashboard</span>
+                <p class="text-[11px] text-slate-400">Real-time KPIs & revenue</p>
+              </div>
+              <span
+                class="inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300"
+              >
+                Live
+              </span>
+            </button>
+            <button
+              class="card-hover flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800/70 hover:text-white"
+            >
+              <span
+                class="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-800/80 text-slate-300"
+              >
+                <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none">
+                  <path
+                    d="M4 5.5H16M4 10H16M4 14.5H10"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </span>
+              <span>Reports</span>
+            </button>
+            <button
+              class="card-hover flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800/70 hover:text-white"
+            >
+              <span
+                class="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-800/80 text-slate-300"
+              >
+                <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none">
+                  <path
+                    d="M5 4.75V15.25M15 4.75V15.25M9.75 4.75V10.25C9.75 11.3546 8.85457 12.25 7.75 12.25H5M15 8H12.25C11.1454 8 10.25 8.89543 10.25 10V15.25"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </span>
+              <span>Sales Pipeline</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <p class="mb-2 px-2 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+            Performance
+          </p>
+          <div class="space-y-1">
+            <button
+              class="card-hover flex w-full items-center justify-between gap-2 rounded-2xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800/70 hover:text-white"
+            >
+              <div class="flex items-center gap-2">
+                <span
+                  class="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-800/80 text-indigo-300"
+                >
+                  <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none">
+                    <path
+                      d="M4 12L8.5 7.5L11.5 10.5L16 6"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M14 6H16V8"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span>Revenue</span>
+              </div>
+              <span class="text-[11px] font-medium text-emerald-400">+18.3%</span>
+            </button>
+            <button
+              class="card-hover flex w-full items-center justify-between gap-2 rounded-2xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800/70 hover:text-white"
+            >
+              <div class="flex items-center gap-2">
+                <span
+                  class="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-800/80 text-sky-300"
+                >
+                  <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none">
+                    <path
+                      d="M5 9.75L8.25 13L15 6.25"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span>Customer Success</span>
+              </div>
+              <span class="text-[11px] font-medium text-slate-400">94%</span>
+            </button>
+            <button
+              class="card-hover flex w-full items-center justify-between gap-2 rounded-2xl px-3 py-2 text-sm text-slate-300 hover:bg-slate-800/70 hover:text-white"
+            >
+              <div class="flex items-center gap-2">
+                <span
+                  class="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-800/80 text-amber-300"
+                >
+                  <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none">
+                    <path
+                      d="M4.75 10C4.75 7.37665 6.87665 5.25 9.5 5.25C12.1234 5.25 14.25 7.37665 14.25 10C14.25 12.6234 12.1234 14.75 9.5 14.75C6.87665 14.75 4.75 12.6234 4.75 10Z"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+                    <path
+                      d="M9.5 6.5V10L11.75 11.25"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span>Retention</span>
+              </div>
+              <span class="text-[11px] font-medium text-emerald-400">+3.1pts</span>
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Footer -->
+      <div class="mt-4 border-t border-white/5 pt-4">
+        <div
+          class="glass card-hover flex items-center justify-between rounded-2xl border border-white/10 bg-slate-900/60 px-3 py-2.5"
+        >
+          <div class="flex items-center gap-2">
+            <div class="relative">
+              <img
+                src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=100&q=80"
+                alt="User avatar"
+                class="h-8 w-8 rounded-2xl object-cover ring-2 ring-emerald-400/60 ring-offset-2 ring-offset-slate-900"
+              />
+              <span
+                class="pulse-dot absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400"
+              ></span>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-slate-100">Jigyashu Kumar</p>
+              <p class="text-[11px] text-slate-400">VP of Operations</p>
+            </div>
+          </div>
+          <button
+            class="inline-flex items-center rounded-2xl border border-white/10 bg-slate-900/80 px-2 py-1 text-[10px] font-medium text-slate-300 hover:border-primary-500/60 hover:text-white"
+          >
+            <svg class="mr-1 h-3 w-3" viewBox="0 0 20 20" fill="none">
+              <path
+                d="M10.0003 4.16663V15.8333M10.0003 15.8333L5.83366 11.6666M10.0003 15.8333L14.167 11.6666"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Export
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <div class="relative flex min-h-screen flex-col lg:pl-[19.5rem]">
+      <!-- Top bar -->
+      <header
+        class="glass sticky top-0 z-20 flex items-center gap-3 border-b border-white/10 bg-slate-950/40 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8"
+      >
+        <!-- Mobile menu button -->
+        <button
+          id="sidebarOpen"
+          class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-slate-900/80 text-slate-200 shadow-sm shadow-slate-950/60 hover:border-primary-500/60 hover:text-white lg:hidden"
+          aria-label="Open navigation"
+        >
+          <svg class="h-4.5 w-4.5" viewBox="0 0 20 20" fill="none">
+            <path
+              d="M4 6H16M4 10H12M4 14H10"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+
+        <div class="flex flex-1 items-center justify-between gap-4">
+          <div class="min-w-0">
+            <p class="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_0_4px_rgba(16,185,129,0.3)]"></span>
+              Executive Overview
+            </p>
+            <div class="mt-0.5 flex flex-wrap items-baseline gap-2">
+              <h1 class="truncate text-lg font-semibold tracking-tight text-white sm:text-xl">
+                Global Business Dashboard
+              </h1>
+              <span class="rounded-full bg-slate-900/80 px-2 py-0.5 text-[11px] text-slate-300">
+                Updated <span id="lastUpdated">Just now</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <!-- Search -->
+            <div
+              class="hidden items-center gap-2 rounded-2xl border border-white/10 bg-slate-900/70 px-2.5 py-1.5 text-xs text-slate-300 shadow-sm shadow-slate-950/60 sm:flex"
+            >
+              <svg class="h-3.5 w-3.5 text-slate-400" viewBox="0 0 20 20" fill="none">
+                <path
+                  d="M9.58333 14.1667C12.4258 14.1667 14.75 11.8425 14.75 9.00004C14.75 6.15754 12.4258 3.83337 9.58333 3.83337C6.74083 3.83337 4.41667 6.15754 4.41667 9.00004C4.41667 11.8425 6.74083 14.1667 9.58333 14.1667Z"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M15.5 15.5L13.5 13.5"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search metrics, accounts..."
+                class="w-40 bg-transparent text-[11px] placeholder-slate-500 outline-none sm:w-48"
+              />
+              <kbd
+                class="ml-1 hidden rounded border border-white/10 bg-slate-900/80 px-1.5 py-0.5 text-[9px] text-slate-400 sm:inline-block"
+                >⌘K</kbd
+              >
+            </div>
+
+            <!-- Date range -->
+            <div
+              class="glass flex items-center gap-1.5 rounded-2xl border border-white/10 bg-slate-900/70 px-2 py-1.5 text-xs text-slate-200 shadow-sm shadow-slate-950/60"
+            >
+              <button id="dateRangeButton" class="flex items-center gap-1.5">
+                <svg class="h-3.5 w-3.5 text-slate-300" viewBox="0 0 20 20" fill="none">
+                  <path
+                    d="M6 4V5.5M14 4V5.5M4.25 8.25H15.75M5.5 5.25H14.5C15.1904 5.25 15.75 5.80964 15.75 6.5V14.5C15.75 15.1904 15.1904 15.75 14.5 15.75H5.5C4.80964 15.75 4.25 15.1904 4.25 14.5V6.5C4.25 5.80964 4.80964 5.25 5.5 5.25Z"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                <span id="dateRangeLabel" class="font-medium">Last 30 days</span>
+              </button>
+              <svg class="h-3 w-3 text-slate-400" viewBox="0 0 20 20" fill="none">
+                <path
+                  d="M6 8L10 12L14 8"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </div>
+
+            <!-- Theme toggle -->
+            <button
+              id="themeToggle"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-white/10 bg-slate-900/80 text-slate-200 shadow-sm shadow-slate-950/60 hover:border-primary-500/60 hover:text-white"
+              aria-label="Toggle theme"
+            >
+              <svg id="themeIconSun" class="h-4.5 w-4.5" viewBox="0 0 20 20" fill="none">
+                <path
+                  d="M10 4V2.5M10 17.5V16M15.3033 4.6967L16.3639 3.63604M3.63605 16.364L4.6967 15.3033M17.5 10H16M4 10H2.5M15.3033 15.3033L16.3639 16.364M3.63605 3.63604L4.6967 4.6967M13.75 10C13.75 11.5188 12.5188 12.75 11 12.75C9.48122 12.75 8.25 11.5188 8.25 10C8.25 8.48122 9.48122 7.25 11 7.25C12.5188 7.25 13.75 8.48122 13.75 10Z"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <svg
+                id="themeIconMoon"
+                class="hidden h-4.5 w-4.5"
+                viewBox="0 0 20 20"
+                fill="none"
+              >
+                <path
+                  d="M16.25 11.1667C15.9555 11.2342 15.6501 11.2694 15.3375 11.2694C11.7661 11.2694 8.86256 8.36586 8.86256 4.79443C8.86256 4.48187 8.89778 4.17645 8.96531 3.88199C6.73079 4.3895 5.08333 6.42494 5.08333 8.87039C5.08333 12.4418 7.98687 15.3454 11.5583 15.3454C14.0037 15.3454 16.0392 13.6979 16.5467 11.4634L16.25 11.1667Z"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+
+            <!-- Profile -->
+            <button
+              class="card-hover hidden items-center gap-2 rounded-2xl border border-white/10 bg-slate-900/80 px-1.5 py-1 text-xs text-slate-200 shadow-sm shadow-slate-950/60 sm:flex"
+            >
+              <div
+                class="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500/80 to-accent-500/80 text-[11px] font-semibold text-white"
+              >
+                AM
+              </div>
+              <div class="hidden text-left sm:block">
+                <p class="text-[11px] font-medium leading-tight">Admin</p>
+                <p class="text-[10px] text-slate-400">Enterprise</p>
+              </div>
+              <svg class="ml-0.5 h-3 w-3 text-slate-400" viewBox="0 0 20 20" fill="none">
+                <path
+                  d="M6 8L10 12L14 8"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <main class="flex-1 px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
+        <div class="mx-auto max-w-7xl space-y-6">
+          <!-- KPI cards -->
+          <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <!-- Card 1 -->
+            <article
+              class="glass card-hover relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-xl shadow-slate-950/60"
+            >
+              <div
+                class="pointer-events-none absolute right-[-40px] top-[-40px] h-32 w-32 rounded-full bg-primary-600/25 blur-3xl"
+              ></div>
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
+                    Total Revenue
+                  </p>
+                  <div class="mt-1 flex items-baseline gap-2">
+                    <p class="text-xl font-semibold text-white">$1.82M</p>
+                    <span
+                      class="inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-300"
+                    >
+                      <svg class="mr-0.5 h-3 w-3" viewBox="0 0 20 20" fill="none">
+                        <path
+                          d="M4.5 11.5L8.25 7.75L11.25 10.75L15.5 6.5"
+                          stroke="currentColor"
+                          stroke-width="1.6"
+                          stroke-linecap="round"
+                        />
+                        <path
+                          d="M11.5 6.5H15.5V10.5"
+                          stroke="currentColor"
+                          stroke-width="1.6"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                      +18.3%
+                    </span>
+                  </div>
+                  <p class="mt-0.5 text-[11px] text-slate-400">vs previous period</p>
+                </div>
+                <div
+                  class="metric-badge flex h-9 w-9 items-center justify-center rounded-2xl border border-primary-500/40 bg-gradient-to-br from-primary-500/30 to-primary-700/60 text-primary-50"
+                >
+                  <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none">
+                    <path
+                      d="M4.25 10.75L7.75 6.75L11.5 9.75L15.75 4.75"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M15.75 8.5V4.75H12"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400">
+                <span>MRR: <span class="text-slate-100">$152k</span></span>
+                <span>ARR: <span class="text-slate-100">$1.82M</span></span>
+              </div>
+            </article>
+
+            <!-- Card 2 -->
+            <article
+              class="glass card-hover relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-xl shadow-slate-950/60"
+            >
+              <div
+                class="pointer-events-none absolute bottom-[-50px] right-[-50px] h-32 w-32 rounded-full bg-emerald-500/25 blur-3xl"
+              ></div>
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
+                    Active Customers
+                  </p>
+                  <div class="mt-1 flex items-baseline gap-2">
+                    <p class="text-xl font-semibold text-white">4,392</p>
+                    <span
+                      class="inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-300"
+                    >
+                      <span class="mr-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                      +246
+                    </span>
+                  </div>
+                  <p class="mt-0.5 text-[11px] text-slate-400">Net +5.9% this month</p>
+                </div>
+                <div
+                  class="metric-badge flex h-9 w-9 items-center justify-center rounded-2xl border border-emerald-500/40 bg-gradient-to-br from-emerald-500/30 to-emerald-700/60 text-emerald-50"
+                >
+                  <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none">
+                    <path
+                      d="M5.5 15.25L9.875 4.75L14.25 15.25M7 12.25H12.75"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Churn: <span class="text-emerald-300">2.1%</span></span>
+                <span>NPS: <span class="text-slate-100">64</span></span>
+              </div>
+            </article>
+
+            <!-- Card 3 -->
+            <article
+              class="glass card-hover relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-xl shadow-slate-950/60"
+            >
+              <div
+                class="pointer-events-none absolute left-[-60px] top-[-60px] h-40 w-40 rounded-full bg-sky-500/30 blur-3xl"
+              ></div>
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
+                    Sales Pipeline
+                  </p>
+                  <div class="mt-1 flex items-baseline gap-2">
+                    <p class="text-xl font-semibold text-white">$832k</p>
+                    <span
+                      class="inline-flex items-center rounded-full bg-sky-500/15 px-2 py-0.5 text-[11px] font-medium text-sky-200"
+                    >
+                      41 deals
+                    </span>
+                  </div>
+                  <p class="mt-0.5 text-[11px] text-slate-400">Expected close: $412k</p>
+                </div>
+                <div
+                  class="metric-badge flex h-9 w-9 items-center justify-center rounded-2xl border border-sky-500/40 bg-gradient-to-br from-sky-500/30 to-sky-700/60 text-sky-50"
+                >
+                  <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none">
+                    <path
+                      d="M4.25 5.5H15.75M4.25 10H12.25M4.25 14.5H9.25"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Win rate: <span class="text-slate-100">31%</span></span>
+                <span>Avg cycle: <span class="text-slate-100">22 days</span></span>
+              </div>
+            </article>
+
+            <!-- Card 4 -->
+            <article
+              class="glass card-hover relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-xl shadow-slate-950/60"
+            >
+              <div
+                class="pointer-events-none absolute bottom-[-50px] left-[-50px] h-32 w-32 rounded-full bg-amber-500/25 blur-3xl"
+              ></div>
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
+                    Team Performance
+                  </p>
+                  <div class="mt-1 flex items-baseline gap-2">
+                    <p class="text-xl font-semibold text-white">87</p>
+                    <span
+                      class="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-200"
+                    >
+                      Index
+                    </span>
+                  </div>
+                  <p class="mt-0.5 text-[11px] text-slate-400">Top 15% of industry peers</p>
+                </div>
+                <div
+                  class="metric-badge flex h-9 w-9 items-center justify-center rounded-2xl border border-amber-500/40 bg-gradient-to-br from-amber-500/30 to-amber-700/60 text-amber-50"
+                >
+                  <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none">
+                    <path
+                      d="M10 4.25L11.486 7.26091L14.8333 7.75L12.4167 10.0891L12.972 13.4167L10 11.875L7.02802 13.4167L7.58333 10.0891L5.16667 7.75L8.51402 7.26091L10 4.25Z"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Utilization: <span class="text-slate-100">76%</span></span>
+                <span>CSAT: <span class="text-slate-100">4.7</span></span>
+              </div>
+            </article>
+          </section>
+
+          <!-- Charts & Insights -->
+          <section class="grid gap-4 lg:grid-cols-3">
+            <!-- Revenue chart -->
+            <article
+              class="glass card-hover relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-xl shadow-slate-950/60 lg:col-span-2"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <div>
+                  <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
+                    Revenue Trend
+                  </p>
+                  <p class="mt-0.5 text-sm font-medium text-white">
+                    Monthly Recurring Revenue
+                  </p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-1.5 text-[11px] text-slate-400">
+                    <span class="h-1.5 w-4 rounded-full bg-primary-500/90"></span>New
+                  </div>
+                  <div class="flex items-center gap-1.5 text-[11px] text-slate-400">
+                    <span class="h-1.5 w-4 rounded-full bg-slate-500/90"></span>Expansion
+                  </div>
+                  <button
+                    id="refreshData"
+                    class="inline-flex items-center rounded-2xl border border-white/10 bg-slate-900/80 px-2 py-1 text-[11px] text-slate-300 hover:border-primary-500/70 hover:text-white"
+                  >
+                    <svg class="mr-1 h-3 w-3" viewBox="0 0 20 20" fill="none">
+                      <path
+                        d="M4.75 4.75V7.25H7.25M15.25 15.25V12.75H12.75M4.75 10.25C4.75 7.90279 6.65279 6 9 6C10.1298 6 11.1578 6.43652 11.923 7.16667M15.25 9.75C15.25 12.0972 13.3472 14 11 14C9.87024 14 8.84222 13.5635 8.07704 12.8333"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    Simulate
+                  </button>
+                </div>
+              </div>
+              <div class="mt-3 h-56 sm:h-64">
+                <canvas id="revenueChart"></canvas>
+              </div>
+            </article>
+
+            <!-- Region performance -->
+            <article
+              class="glass card-hover relative flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-xl shadow-slate-950/60"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <div>
+                  <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
+                    Regional Breakdown
+                  </p>
+                  <p class="mt-0.5 text-sm font-medium text-white">Revenue by region</p>
+                </div>
+              </div>
+              <div class="mt-3 grid flex-1 grid-cols-2 gap-3">
+                <div class="flex items-center justify-center">
+                  <div class="relative h-28 w-28">
+                    <canvas id="regionChart"></canvas>
+                    <div
+                      class="pointer-events-none absolute inset-0 flex items-center justify-center text-center text-[11px] text-slate-300"
+                    >
+                      <div>
+                        <p class="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                          Top Region
+                        </p>
+                        <p class="text-xs font-semibold text-white">North America</p>
+                        <p class="text-[10px] text-emerald-300">+23.4%</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="space-y-2 text-[11px]">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                      <span class="h-1.5 w-5 rounded-full bg-primary-500/80"></span>
+                      <p class="text-slate-200">North America</p>
+                    </div>
+                    <p class="font-medium text-slate-100">$742k</p>
+                  </div>
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                      <span class="h-1.5 w-5 rounded-full bg-emerald-400/80"></span>
+                      <p class="text-slate-200">EMEA</p>
+                    </div>
+                    <p class="font-medium text-slate-100">$489k</p>
+                  </div>
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                      <span class="h-1.5 w-5 rounded-full bg-amber-400/80"></span>
+                      <p class="text-slate-200">APAC</p>
+                    </div>
+                    <p class="font-medium text-slate-100">$318k</p>
+                  </div>
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                      <span class="h-1.5 w-5 rounded-full bg-slate-500/80"></span>
+                      <p class="text-slate-200">LATAM</p>
+                    </div>
+                    <p class="font-medium text-slate-100">$128k</p>
+                  </div>
+                  <div class="mt-1 rounded-2xl bg-slate-950/70 p-2">
+                    <p class="text-[10px] text-slate-400">
+                      EMEA and APAC outpacing forecast by
+                      <span class="font-semibold text-emerald-300">+9.2%</span>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <!-- Table & Activity -->
+          <section class="grid gap-4 lg:grid-cols-3">
+            <!-- Top accounts table -->
+            <article
+              class="glass card-hover relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-xl shadow-slate-950/60 lg:col-span-2"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <div>
+                  <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
+                    Top Accounts
+                  </p>
+                  <p class="mt-0.5 text-sm font-medium text-white">Largest revenue contributors</p>
+                </div>
+                <div class="flex items-center gap-2 text-[11px]">
+                  <button
+                    class="rounded-2xl border border-white/10 bg-slate-900/80 px-2 py-1 text-slate-300 hover:border-primary-500/70 hover:text-white"
+                  >
+                    This quarter
+                  </button>
+                  <button
+                    class="rounded-2xl border border-transparent bg-slate-800/80 px-2 py-1 text-slate-300 hover:bg-slate-700/80"
+                  >
+                    All time
+                  </button>
+                </div>
+              </div>
+
+              <div class="mt-3 overflow-x-auto">
+                <table class="min-w-full text-left text-xs text-slate-300">
+                  <thead class="border-b border-white/5 text-[11px] uppercase tracking-[0.16em]">
+                    <tr>
+                      <th class="py-2 pr-4">Account</th>
+                      <th class="px-3 py-2">Owner</th>
+                      <th class="px-3 py-2 text-right">MRR</th>
+                      <th class="px-3 py-2 text-right">Health</th>
+                      <th class="px-3 py-2 text-right">Last Activity</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-white/5">
+                    <tr class="hover:bg-slate-800/60">
+                      <td class="py-2 pr-4">
+                        <div class="flex items-center gap-2">
+                          <span
+                            class="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500/80 to-primary-600/80 text-[11px] font-semibold text-white"
+                          >
+                            AL
+                          </span>
+                          <div>
+                            <p class="text-xs font-medium text-slate-100">Alpine Labs Inc.</p>
+                            <p class="text-[11px] text-slate-400">Technology · Enterprise</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="px-3 py-2">
+                        <p class="text-xs text-slate-100">Jordan Chen</p>
+                        <p class="text-[11px] text-slate-400">Strategic AE</p>
+                      </td>
+                      <td class="px-3 py-2 text-right">
+                        <p class="text-xs font-medium text-slate-100">$86,400</p>
+                        <p class="text-[11px] text-emerald-300">+21.3%</p>
+                      </td>
+                      <td class="px-3 py-2 text-right">
+                        <span
+                          class="inline-flex items-center justify-end gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-200"
+                        >
+                          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                          Healthy
+                        </span>
+                      </td>
+                      <td class="px-3 py-2 text-right">
+                        <p class="text-xs text-slate-100">2 days ago</p>
+                        <p class="text-[11px] text-slate-400">QBR completed</p>
+                      </td>
+                    </tr>
+                    <tr class="hover:bg-slate-800/60">
+                      <td class="py-2 pr-4">
+                        <div class="flex items-center gap-2">
+                          <span
+                            class="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/80 to-emerald-600/80 text-[11px] font-semibold text-white"
+                          >
+                            NG
+                          </span>
+                          <div>
+                            <p class="text-xs font-medium text-slate-100">NextGen Retail</p>
+                            <p class="text-[11px] text-slate-400">Retail · Enterprise</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="px-3 py-2">
+                        <p class="text-xs text-slate-100">Priya Patel</p>
+                        <p class="text-[11px] text-slate-400">Account Director</p>
+                      </td>
+                      <td class="px-3 py-2 text-right">
+                        <p class="text-xs font-medium text-slate-100">$54,900</p>
+                        <p class="text-[11px] text-amber-300">+8.4%</p>
+                      </td>
+                      <td class="px-3 py-2 text-right">
+                        <span
+                          class="inline-flex items-center justify-end gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-200"
+                        >
+                          <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
+                          Watch
+                        </span>
+                      </td>
+                      <td class="px-3 py-2 text-right">
+                        <p class="text-xs text-slate-100">5 days ago</p>
+                        <p class="text-[11px] text-slate-400">Renewal in 45 days</p>
+                      </td>
+                    </tr>
+                    <tr class="hover:bg-slate-800/60">
+                      <td class="py-2 pr-4">
+                        <div class="flex items-center gap-2">
+                          <span
+                            class="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500/80 to-sky-600/80 text-[11px] font-semibold text-white"
+                          >
+                            GT
+                          </span>
+                          <div>
+                            <p class="text-xs font-medium text-slate-100">Global Transport</p>
+                            <p class="text-[11px] text-slate-400">Logistics · Strategic</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="px-3 py-2">
+                        <p class="text-xs text-slate-100">Michael Yang</p>
+                        <p class="text-[11px] text-slate-400">Enterprise AE</p>
+                      </td>
+                      <td class="px-3 py-2 text-right">
+                        <p class="text-xs font-medium text-slate-100">$41,200</p>
+                        <p class="text-[11px] text-emerald-300">+14.1%</p>
+                      </td>
+                      <td class="px-3 py-2 text-right">
+                        <span
+                          class="inline-flex items-center justify-end gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-200"
+                        >
+                          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                          Healthy
+                        </span>
+                      </td>
+                      <td class="px-3 py-2 text-right">
+                        <p class="text-xs text-slate-100">Today</p>
+                        <p class="text-[11px] text-slate-400">Pilot expanded</p>
+                      </td>
+                    </tr>
+                    <tr class="hover:bg-slate-800/60">
+                      <td class="py-2 pr-4">
+                        <div class="flex items-center gap-2">
+                          <span
+                            class="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500/80 to-rose-600/80 text-[11px] font-semibold text-white"
+                          >
+                            HS
+                          </span>
+                          <div>
+                            <p class="text-xs font-medium text-slate-100">Horizon Systems</p>
+                            <p class="text-[11px] text-slate-400">Manufacturing · Growth</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="px-3 py-2">
+                        <p class="text-xs text-slate-100">Dana Lee</p>
+                        <p class="text-[11px] text-slate-400">Enterprise AE</p>
+                      </td>
+                      <td class="px-3 py-2 text-right">
+                        <p class="text-xs font-medium text-slate-100">$32,750</p>
+                        <p class="text-[11px] text-rose-300">-3.2%</p>
+                      </td>
+                      <td class="px-3 py-2 text-right">
+                        <span
+                          class="inline-flex items-center justify-end gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 text-[11px] font-medium text-rose-200"
+                        >
+                          <span class="h-1.5 w-1.5 rounded-full bg-rose-400"></span>
+                          At risk
+                        </span>
+                      </td>
+                      <td class="px-3 py-2 text-right">
+                        <p class="text-xs text-slate-100">8 days ago</p>
+                        <p class="text-[11px] text-slate-400">Usage down 18%</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </article>
+
+            <!-- Activity feed -->
+            <article
+              class="glass card-hover relative flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-xl shadow-slate-950/60"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <div>
+                  <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
+                    Activity
+                  </p>
+                  <p class="mt-0.5 text-sm font-medium text-white">Recent changes</p>
+                </div>
+                <button
+                  class="rounded-2xl border border-white/10 bg-slate-900/80 px-2 py-1 text-[11px] text-slate-300 hover:border-primary-500/70 hover:text-white"
+                >
+                  View all
+                </button>
+              </div>
+
+              <div class="mt-3 space-y-3 text-xs">
+                <div class="flex gap-3">
+                  <div class="mt-0.5 flex flex-col items-center">
+                    <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                    <span class="mt-1 flex-1 w-px bg-slate-700/80"></span>
+                  </div>
+                  <div class="flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                      <p class="font-medium text-slate-100">
+                        Alpine Labs upgraded to Enterprise
+                      </p>
+                      <span class="text-[10px] text-slate-400">12m ago</span>
+                    </div>
+                    <p class="mt-0.5 text-[11px] text-slate-400">
+                      +$18,400 MRR from 280 → 420 seats. Led by
+                      <span class="text-slate-200">Jordan Chen</span>.
+                    </p>
+                    <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                      <span
+                        class="inline-flex items-center rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-200"
+                      >
+                        Expansion
+                      </span>
+                      <span
+                        class="inline-flex items-center rounded-full bg-slate-800/80 px-1.5 py-0.5 text-[10px] text-slate-200"
+                      >
+                        Q3 Target
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex gap-3">
+                  <div class="mt-0.5 flex flex-col items-center">
+                    <span class="h-2 w-2 rounded-full bg-sky-400"></span>
+                    <span class="mt-1 flex-1 w-px bg-slate-700/80"></span>
+                  </div>
+                  <div class="flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                      <p class="font-medium text-slate-100">
+                        New opportunity created with Nova Health
+                      </p>
+                      <span class="text-[10px] text-slate-400">45m ago</span>
+                    </div>
+                    <p class="mt-0.5 text-[11px] text-slate-400">
+                      $126k opportunity in APAC. Expected close in
+                      <span class="text-slate-200">76 days</span>.
+                    </p>
+                    <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                      <span
+                        class="inline-flex items-center rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[10px] text-sky-200"
+                      >
+                        New pipeline
+                      </span>
+                      <span
+                        class="inline-flex items-center rounded-full bg-slate-800/80 px-1.5 py-0.5 text-[10px] text-slate-200"
+                      >
+                        Healthcare
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex gap-3">
+                  <div class="mt-0.5 flex flex-col items-center">
+                    <span class="h-2 w-2 rounded-full bg-amber-400"></span>
+                    <span class="mt-1 flex-1 w-px bg-slate-700/80"></span>
+                  </div>
+                  <div class="flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                      <p class="font-medium text-slate-100">
+                        Usage dip detected for Horizon Systems
+                      </p>
+                      <span class="text-[10px] text-slate-400">2h ago</span>
+                    </div>
+                    <p class="mt-0.5 text-[11px] text-slate-400">
+                      Weekly active users down
+                      <span class="text-rose-300">-18%</span> vs last month. CSM notified.
+                    </p>
+                    <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                      <span
+                        class="inline-flex items-center rounded-full bg-rose-500/15 px-1.5 py-0.5 text-[10px] text-rose-200"
+                      >
+                        At risk
+                      </span>
+                      <span
+                        class="inline-flex items-center rounded-full bg-slate-800/80 px-1.5 py-0.5 text-[10px] text-slate-200"
+                      >
+                        CSM follow-up
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex gap-3">
+                  <div class="mt-0.5 flex flex-col items-center">
+                    <span class="h-2 w-2 rounded-full bg-slate-400"></span>
+                  </div>
+                  <div class="flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                      <p class="font-medium text-slate-100">Quarterly board report ready</p>
+                      <span class="text-[10px] text-slate-400">Today</span>
+                    </div>
+                    <p class="mt-0.5 text-[11px] text-slate-400">
+                      Consolidated metrics available. Export slides and full dataset.
+                    </p>
+                    <div class="mt-2 flex gap-2">
+                      <button
+                        class="flex-1 rounded-2xl bg-primary-600 px-2 py-1.5 text-[11px] font-medium text-white shadow-sm shadow-primary-900/70 hover:bg-primary-500"
+                      >
+                        Export PDF
+                      </button>
+                      <button
+                        class="flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-2 py-1.5 text-[11px] text-slate-200 hover:border-primary-500/70 hover:text-white"
+                      >
+                        Open in Slides
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    // Theme handling
+    (function () {
+      const root = document.documentElement;
+      const prefersDark =
+        window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const storedTheme = localStorage.getItem('dashboard-theme');
+      const isDark = storedTheme
+        ? storedTheme === 'dark'
+        : prefersDark || root.classList.contains('dark');
+
+      if (isDark) root.classList.add('dark');
+      else root.classList.remove('dark');
+
+      function updateThemeIcon() {
+        const sun = document.getElementById('themeIconSun');
+        const moon = document.getElementById('themeIconMoon');
+        const dark = root.classList.contains('dark');
+        if (dark) {
+          sun.classList.add('hidden');
+          moon.classList.remove('hidden');
+          document.body.classList.remove('bg-slate-50', 'text-slate-900');
+          document.body.classList.add('bg-slate-950', 'text-slate-100');
+        } else {
+          sun.classList.remove('hidden');
+          moon.classList.add('hidden');
+          document.body.classList.remove('bg-slate-950', 'text-slate-100');
+          document.body.classList.add('bg-slate-50', 'text-slate-900');
+        }
+      }
+
+      document.getElementById('themeToggle').addEventListener('click', () => {
+        root.classList.toggle('dark');
+        const dark = root.classList.contains('dark');
+        localStorage.setItem('dashboard-theme', dark ? 'dark' : 'light');
+        updateThemeIcon();
+      });
+
+      updateThemeIcon();
+    })();
+
+    // Sidebar mobile handling
+    (function () {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('mobileOverlay');
+      const openBtn = document.getElementById('sidebarOpen');
+      const closeBtn = document.getElementById('sidebarClose');
+
+      function openSidebar() {
+        sidebar.classList.remove('-translate-x-full');
+        overlay.classList.remove('hidden');
+        overlay.classList.add('fade-in');
+      }
+
+      function closeSidebar() {
+        sidebar.classList.add('-translate-x-full');
+        overlay.classList.add('hidden');
+      }
+
+      openBtn.addEventListener('click', openSidebar);
+      closeBtn.addEventListener('click', closeSidebar);
+      overlay.addEventListener('click', closeSidebar);
+
+      function handleResize() {
+        if (window.innerWidth >= 1024) {
+          sidebar.classList.remove('-translate-x-full');
+          overlay.classList.add('hidden');
+        } else {
+          sidebar.classList.add('-translate-x-full');
+        }
+      }
+
+      window.addEventListener('resize', handleResize);
+      handleResize();
+    })();
+
+    // Date range selector (simple demo behavior)
+    (function () {
+      const button = document.getElementById('dateRangeButton');
+      const label = document.getElementById('dateRangeLabel');
+      const ranges = ['Last 7 days', 'Last 30 days', 'Last quarter', 'Year to date'];
+      let index = 1;
+
+      button.addEventListener('click', () => {
+        index = (index + 1) % ranges.length;
+        label.textContent = ranges[index];
+      });
+    })();
+
+    // Last updated label
+    (function () {
+      const el = document.getElementById('lastUpdated');
+      const now = new Date();
+      const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      el.textContent = `Today · ${time}`;
+    })();
+
+    // Charts
+    (function () {
+      const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+      const regionCtx = document.getElementById('regionChart').getContext('2d');
+
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+      function generateRevenueData() {
+        const base = 90;
+        const noise = () => (Math.random() - 0.5) * 25;
+        const trend = [];
+        let value = base;
+        for (let i = 0; i < 12; i++) {
+          value += Math.random() * 12 + 2;
+          trend.push(Math.max(70, value + noise()));
+        }
+        const expansion = trend.map((v) => v * (0.3 + Math.random() * 0.2));
+        return { newRevenue: trend, expansion };
+      }
+
+      const initialRevenue = generateRevenueData();
+
+      const revenueChart = new Chart(revenueCtx, {
+        type: 'line',
+        data: {
+          labels: months,
+          datasets: [
+            {
+              label: 'New Business',
+              data: initialRevenue.newRevenue,
+              borderColor: '#6366f1',
+              backgroundColor: 'rgba(99,102,241,0.16)',
+              borderWidth: 2,
+              tension: 0.35,
+              fill: true,
+              pointRadius: 0,
+              pointHoverRadius: 3,
+            },
+            {
+              label: 'Expansion',
+              data: initialRevenue.expansion,
+              borderColor: '#94a3b8',
+              backgroundColor: 'rgba(148,163,184,0.12)',
+              borderWidth: 2,
+              borderDash: [4, 4],
+              tension: 0.35,
+              fill: true,
+              pointRadius: 0,
+              pointHoverRadius: 3,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              backgroundColor: 'rgba(15,23,42,0.95)',
+              borderColor: 'rgba(148,163,184,0.4)',
+              borderWidth: 1,
+              padding: 10,
+              cornerRadius: 12,
+              titleFont: { size: 11, family: 'system-ui' },
+              bodyFont: { size: 11, family: 'system-ui' },
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString()}k`,
+              },
+            },
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#9ca3af', maxTicksLimit: 6, font: { size: 10 } },
+            },
+            y: {
+              grid: { color: 'rgba(148,163,184,0.16)', drawBorder: false },
+              ticks: {
+                color: '#9ca3af',
+                font: { size: 10 },
+                callback: (val) => `$${val}k`,
+              },
+              suggestedMin: 60,
+            },
+          },
+        },
+      });
+
+      const regionChart = new Chart(regionCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['North America', 'EMEA', 'APAC', 'LATAM'],
+          datasets: [
+            {
+              data: [742, 489, 318, 128],
+              backgroundColor: ['#6366f1', '#22c55e', '#facc15', '#64748b'],
+              borderColor: 'rgba(15,23,42,1)',
+              borderWidth: 3,
+              hoverBorderWidth: 3,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '70%',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(15,23,42,0.95)',
+              borderColor: 'rgba(148,163,184,0.4)',
+              borderWidth: 1,
+              padding: 8,
+              cornerRadius: 10,
+              titleFont: { size: 11, family: 'system-ui' },
+              bodyFont: { size: 11, family: 'system-ui' },
+              callbacks: {
+                label: (ctx) => `${ctx.label}: $${ctx.parsed.toLocaleString()}k`,
+              },
+            },
+          },
+        },
+      });
+
+      // Simulate new data
+      document.getElementById('refreshData').addEventListener('click', () => {
+        const { newRevenue, expansion } = generateRevenueData();
+        revenueChart.data.datasets[0].data = newRevenue;
+        revenueChart.data.datasets[1].data = expansion;
+        revenueChart.update();
+      });
+    })();
+  </script>
+</body>
+</html>
